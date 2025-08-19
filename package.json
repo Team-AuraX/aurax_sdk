@@ -1,0 +1,52 @@
+{
+  "name": "aurax",
+  "version": "0.0.1",
+  "description": "AuraX API wrapper ",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist/types",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:types",
+    "test:e2e": "pnpm build && tsc -p tsconfig.test.json && node dist-test/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "homepage": "https://github.com/team-AuraX/aurax_sdk#readme",
+  "bugs": {
+    "url": "https://github.com/team-AuraX/aurax_sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/team-AuraX/aurax_sdk.git"
+  },
+  "author": {
+    "name": "Himanshu",
+    "email": "himanshu@example.com",
+    "url": "https://github.com/himasnhu-at"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "eventsource": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/node-fetch": "^2.6.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

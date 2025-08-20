@@ -1,7 +1,7 @@
 {
-  "name": "aurax",
+  "name": "aurax_sdk",
   "version": "0.0.1",
-  "description": "AuraX API wrapper ",
+  "description": "AuraX API wrapper",
   "type": "module",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -14,13 +14,13 @@
     }
   },
   "scripts": {
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist && rm -rf dist-test",
     "build:esm": "tsc -p tsconfig.esm.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist/types",
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:types",
     "test:e2e": "pnpm build && tsc -p tsconfig.test.json && node dist-test/index.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "pnpm run build"
   },
   "homepage": "https://github.com/team-AuraX/aurax_sdk#readme",
   "bugs": {
@@ -48,5 +48,6 @@
   "engines": {
     "node": ">=18"
   },
+  "packageManager": "pnpm@10.13.1",
   "license": "MIT"
 }

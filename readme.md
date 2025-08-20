@@ -1,12 +1,12 @@
 # AuraX SDK
 
-<!--![npm version](https://img.shields.io/npm/v/your-package-name.svg)-->
 
-<!-- <div align="center">
 
-[Website](https://aurax.co.in) • [Documentation](https://studio.aurax.co.in/developer/docs)
+<div align="center">
 
-</div> -->
+![npm version](https://img.shields.io/npm/v/aurax_sdk.svg) • [![CI/CD](https://github.com/Team-AuraX/aurax_sdk/actions/workflows/ci.yaml/badge.svg)](https://github.com/Team-AuraX/aurax_sdk/actions/workflows/ci.yaml) • [Website](https://aurax.co.in) • [Documentation](https://studio.aurax.co.in/developer/docs)
+
+</div>
 
 > 🚀 **AI-Powered Fashion Technology SDK** - Integrate virtual try-on, AI image generation, and smart product descriptions into your applications.
 
@@ -26,17 +26,17 @@
 ### Installation
 
 ```bash
-npm install @aurax/sdk
+npm install aurax
 # or
-yarn add @aurax/sdk
+yarn add aurax
 # or
-pnpm add @aurax/sdk
+pnpm add aurax
 ```
 
 ### Basic Setup
 
 ```typescript
-import { AuraXClient } from "@aurax/sdk/dist/esm/index.js";
+import { AuraXClient } from "aurax/dist/esm/index.js";
 
 const client = new AuraXClient({
   apiKey: process.env.AURAX_API_KEY!,
@@ -147,7 +147,7 @@ import {
   NotFoundError,
   TimeoutError,
   NetworkError
-} from '@aurax/sdk';
+} from 'aurax';
 
 try {
   const { taskId } = await client.vto({
@@ -310,7 +310,7 @@ interface PollOptions {
 
 ```typescript
 import fs from 'fs';
-import { AuraXClient } from "@aurax/sdk/dist/esm/index.js";
+import { AuraXClient } from "aurax/dist/esm/index.js";
 
 async function completeVtoWorkflow() {
   const client = new AuraXClient({
@@ -457,7 +457,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📖 **Documentation**: [https://studio.aurax.co.in/developers/docs/sdk](https://studio.aurax.co.in/developers/docs/sdk)
+- 📖 **Documentation**: [https://studio.aurax.co.in/developer/docs/sdk](https://studio.aurax.co.in/developer/docs/sdk)
 - 📧 **Email Support**: himanshu@aurax.co.in
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Team-AuraX/aurax_sdk/issues)
 

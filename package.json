@@ -1,11 +1,20 @@
 {
-  "name": "aurax_sdk",
-  "version": "0.0.1",
+  "name": "aurax",
+  "version": "0.0.3",
   "description": "AuraX API wrapper",
   "type": "module",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist/",
+    "readme.md",
+    "LICENSE",
+    "package.json",
+    "tsconfig.json",
+    "tsconfig.esm.json",
+    "tsconfig.cjs.json"
+  ],
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",

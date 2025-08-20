@@ -7,17 +7,13 @@ async function main() {
   import("./vto.js");
   console.log("--- VTO Example Finished ---\n");
 
-  // console.log("--- 2. Running Image Generation Example ---");
-  // import("./image-generation.js");
-  // console.log("--- Image Generation Example Finished ---\n");
+  console.log("--- 2. Running Image Generation Example ---");
+  import("./image-generation.js");
+  console.log("--- Image Generation Example Finished ---\n");
 
-  // console.log("--- 3. Running Product Description Example ---");
-  // import("./product-description.js");
-  // console.log("--- Product Description Example Finished ---\n");
-
-  // console.log("--- 4. Running Streaming Example ---");
-  // import("./streaming.js");
-  // console.log("--- Streaming Example Finished ---\n");
+  console.log("--- 3. Running Product Description Example ---");
+  import("./product-description.js");
+  console.log("--- Product Description Example Finished ---\n");
 
   console.log("✅ All examples finished successfully.");
 }

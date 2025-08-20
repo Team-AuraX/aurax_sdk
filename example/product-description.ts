@@ -1,8 +1,22 @@
 import { AuraXClient } from "../dist/esm/index.js";
+import "dotenv/config";
 
+// --- Environment Variable Checks (with corrected log message) ---
+if (!process.env.AURAX_API_KEY) {
+  console.error("Missing AURAX_API_KEY environment variable.");
+  process.exit(1);
+}
+
+if (!process.env.AURAX_KEY_ID) {
+  // Corrected the variable name in the error message
+  console.error("Missing AURAX_KEY_ID environment variable.");
+  process.exit(1);
+}
+
+// --- Client Initialization ---
 const client = new AuraXClient({
-  apiKey: process.env.AURAX_API_KEY!,
-  keyId: process.env.AURAX_KEY_ID!,
+  apiKey: process.env.AURAX_API_KEY,
+  keyId: process.env.AURAX_KEY_ID,
   baseUrl: "http://localhost:4000",
 });
 

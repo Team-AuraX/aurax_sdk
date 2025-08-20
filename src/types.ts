@@ -14,15 +14,15 @@ export interface VtoRequest {
   garmentImage: string; // base64
   productType: ProductType;
   garmentStrength: 1 | 2 | 3;
-  maskBase64?: string;
-  prompt?: string;
+  maskBase64?: string | null;
+  prompt?: string | null;
   runWithPrompt?: boolean;
 }
 
 export interface ImageGenerationRequest {
   prompt: string;
   productType: ProductType;
-  maskBase64?: string;
+  maskBase64?: string | null;
   width?: number; // default 1024, max 2048
   height?: number; // default 1024, max 2048
 }
@@ -34,24 +34,20 @@ export interface ProductDescriptionRequest {
 
 export interface TaskResponse {
   taskId: string;
-  status?: string;
-  resultUrl?: string;
-  [k: string]: unknown;
 }
 
 export type TaskStatus =
-  | "queued"
-  | "processing"
-  | "succeeded"
-  | "failed"
+  | "IN_QUEUE"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED"
   | string;
 
 export interface TaskStatusResponse {
-  taskId: string;
+  id: string;
   status: TaskStatus;
-  result?: any;
-  error?: string;
-  [k: string]: unknown;
+  output?: string;
+  errorMessages?: string;
 }
 
 export interface AuraXOptions {
@@ -61,13 +57,21 @@ export interface AuraXOptions {
 }
 
 export interface StreamMessage {
-  type: "progress" | "status" | "result" | "error" | string;
-  data?: unknown;
-  status?: TaskStatus;
-  [k: string]: unknown;
+  id: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  output: any | null;
+  errorMessage: string[] | null;
 }
 
-export interface SSEMessageEvent {
-  data: string;
-  lastEventId?: string;
+export interface HeartbeatData {
+  timestamp: number;
+}
+
+export interface StreamCallbacks {
+  /** Handles new task status updates. */
+  onMessage: (msg: StreamMessage) => void;
+  /** Handles heartbeat events to indicate the connection is alive. */
+  onHeartbeat?: (data: HeartbeatData) => void;
+  /** Handles any connection or parsing errors. */
+  onError?: (err: any) => void;
 }

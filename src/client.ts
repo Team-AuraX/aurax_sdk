@@ -1,4 +1,5 @@
 import type { EventSourceInit } from "eventsource";
+import { EventSource } from "eventsource";
 import {
   AuraXOptions,
   VtoRequest,
@@ -7,6 +8,8 @@ import {
   TaskResponse,
   TaskStatusResponse,
   StreamMessage,
+  StreamCallbacks,
+  HeartbeatData,
 } from "./types.js";
 
 /**
@@ -42,33 +45,99 @@ export class AuraXClient {
     };
   }
 
-  /** 1) Virtual Try-On (async) -> returns { taskId } */
-  async vto(body: VtoRequest): Promise<TaskResponse> {
+  /**
+   * Virtual Try-On (async)
+   *
+   * @param personImage: base64 encoded person image
+   * @param garmentImage: base64 encoded garment image
+   * @param productType: product type
+   * @param garmentStrength(= 2): garment strength
+   * @param maskBase64(= null): base64 encoded mask image
+   * @param prompt(= null): prompt for image generation
+   * @param runWithPrompt(= false): run with prompt
+   *
+   * @returns { taskId }
+   */
+  async vto({
+    personImage,
+    garmentImage,
+    productType,
+    garmentStrength = 2,
+    maskBase64 = null,
+    prompt = null,
+    runWithPrompt = false,
+  }: VtoRequest): Promise<TaskResponse> {
+    const payload: VtoRequest = {
+      personImage,
+      garmentImage,
+      productType,
+      garmentStrength,
+      ...(maskBase64 && { maskBase64 }),
+      ...(prompt && { prompt }),
+      ...(runWithPrompt && { runWithPrompt }),
+    };
+
     const res = await fetch(`${this.baseUrl}/api/ai/vto`, {
       method: "POST",
       headers: this.jsonHeaders,
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
 
-  /** 2) Image Generation (async) -> returns { taskId } */
-  async imageGeneration(body: ImageGenerationRequest): Promise<TaskResponse> {
+  /**
+   * Image Generation (async)
+   *
+   * @param prompt: prompt for image generation
+   * @param productType: product type
+   * @param maskBase64(= null): base64 encoded mask image
+   * @param width(= 1024): width of the generated image
+   * @param height(= 1024): height of the generated image
+   *
+   * @returns { taskId }
+   * */
+  async imageGeneration({
+    prompt,
+    productType,
+    maskBase64 = null,
+    width = 1024,
+    height = 1024,
+  }: ImageGenerationRequest): Promise<TaskResponse> {
+    const payload = {
+      prompt,
+      productType,
+      // Conditionally add the maskBase64 property
+      ...(maskBase64 && { maskBase64 }),
+      width,
+      height,
+    };
+
     const res = await fetch(`${this.baseUrl}/api/ai/image-generation`, {
       method: "POST",
       headers: this.jsonHeaders,
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
+
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
 
-  /** 3) Product Description (sync) -> returns text */
-  async productDescription(req: ProductDescriptionRequest): Promise<string> {
+  /**
+   * Product Description (sync)
+   *
+   * @param image: image file
+   * @param productType: product type
+   *
+   * @returns text of product description
+   * */
+  async productDescription({
+    image,
+    productType,
+  }: ProductDescriptionRequest): Promise<string> {
     const form = new FormData();
-    form.append("image", req.image);
-    form.append("productType", req.productType);
+    form.append("image", image);
+    form.append("productType", productType);
 
     const res = await fetch(`${this.baseUrl}/api/ai/product-description`, {
       method: "POST",
@@ -79,7 +148,13 @@ export class AuraXClient {
     return res.text();
   }
 
-  /** 4) Get Task Status (sync) */
+  /**
+   * Get Task Status (sync)
+   *
+   * @param taskId - The ID of the task to get status for.
+   *
+   * @returns The status of the task.
+   */
   async getTask(taskId: string): Promise<TaskStatusResponse> {
     const res = await fetch(
       `${this.baseUrl}/api/ai/task/${encodeURIComponent(taskId)}`,
@@ -93,19 +168,19 @@ export class AuraXClient {
   }
 
   /**
-   * 5) Stream Task Status (SSE). Remember to call `es.close()` when done.
-   * Returns the raw EventSource (from `eventsource` package).
+   * Stream Task Status (SSE).
+   * @important Remember to call `es.close()` when you're done.
+   *
+   * @param taskId - The ID of the task to stream.
+   * @param callbacks - Callbacks for handling messages and errors.
+   *
+   * @returns The raw EventSource object.
    */
-  streamTask(
-    taskId: string,
-    onMessage: (msg: StreamMessage) => void,
-    onError?: (err: any) => void,
-  ): EventSource {
+  streamTask(taskId: string, callbacks: StreamCallbacks): EventSource {
     const url = `${this.baseUrl}/api/ai/task/${encodeURIComponent(
       taskId,
     )}/stream`;
 
-    // Create a custom fetch function to inject headers.
     const customFetch: typeof fetch = (url, init) => {
       const headers = new Headers(init?.headers);
       for (const [key, value] of Object.entries(this.authHeaders)) {
@@ -114,32 +189,57 @@ export class AuraXClient {
       return fetch(url, { ...init, headers });
     };
 
-    // Pass the custom fetch function in the options.
     const options: EventSourceInit = {
       fetch: customFetch,
     };
 
     const es = new EventSource(url, options);
 
-    es.addEventListener("message", (event: any) => {
+    es.addEventListener("message", (event: MessageEvent) => {
       try {
         const parsedData: StreamMessage = JSON.parse(event.data);
-        onMessage(parsedData);
+        callbacks.onMessage(parsedData);
       } catch (e) {
-        if (onError) {
-          onError(new Error(`Failed to parse SSE message data: ${event.data}`));
+        if (callbacks.onError) {
+          callbacks.onError(
+            new Error(`Failed to parse SSE message data: ${event.data}`),
+          );
+        }
+      }
+    });
+
+    es.addEventListener("heartbeat", (event: MessageEvent) => {
+      if (callbacks.onHeartbeat) {
+        try {
+          const parsedData: HeartbeatData = JSON.parse(event.data);
+          callbacks.onHeartbeat(parsedData);
+        } catch (e) {
+          if (callbacks.onError) {
+            callbacks.onError(
+              new Error(`Failed to parse heartbeat data: ${event.data}`),
+            );
+          }
         }
       }
     });
 
     es.onerror = (err: any) => {
-      if (onError) onError(err);
+      if (callbacks.onError) {
+        callbacks.onError(err);
+      }
+      es.close();
     };
 
     return es;
   }
 
-  /** 6) Get Image -> returns Blob */
+  /**
+   * Get Image
+   *
+   * @param imageId - The ID of the image to retrieve.
+   *
+   * @returns Blob
+   */
   async getImage(imageId: string): Promise<Blob> {
     const res = await fetch(
       `${this.baseUrl}/images/${encodeURIComponent(imageId)}`,
@@ -153,27 +253,38 @@ export class AuraXClient {
   }
 
   /**
-   * Helper: poll a task until it reaches a terminal state.
+   * @Helper: poll a task until it reaches a terminal state.
    * Resolves with final TaskStatusResponse or rejects on timeout.
+   *
+   * @param taskId - The ID of the task to poll.
+   * @param options - Options for polling.
+   * @type options: intervalMs ( 2000 ) - The interval in milliseconds between polls.
+   * @type options: timeoutMs ( 5 * 60 * 1000 ) - The timeout in milliseconds.
+   *
+   * @returns Promise<TaskStatusResponse>
    */
-  async pollTask(
-    taskId: string,
-    {
+  async pollTask({
+    taskId,
+    options: {
       intervalMs = 2000,
       timeoutMs = 5 * 60 * 1000, // 5 min
-      isTerminal = (s: string) => ["succeeded", "failed"].includes(s),
-    }: {
+    } = {},
+  }: {
+    taskId: string;
+    options?: {
       intervalMs?: number;
       timeoutMs?: number;
-      isTerminal?: (status: string) => boolean;
-    } = {},
-  ): Promise<TaskStatusResponse> {
+    };
+  }): Promise<TaskStatusResponse> {
     const start = Date.now();
     while (true) {
       const status = await this.getTask(taskId);
-      if (status.status && isTerminal(status.status)) return status;
-      if (Date.now() - start > timeoutMs) throw new Error("pollTask: timeout");
+      console.log(`Task (${taskId}) Status:`, status.status);
+      if (status.status === "COMPLETED" || status.status === "FAILED") {
+        return status;
+      }
       await new Promise((r) => setTimeout(r, intervalMs));
+      if (Date.now() - start > timeoutMs) throw new Error("pollTask: timeout");
     }
   }
 }

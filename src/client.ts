@@ -11,6 +11,14 @@ import {
   StreamCallbacks,
   HeartbeatData,
 } from "./types.js";
+import {
+  APIError,
+  AuthenticationError,
+  BadRequestError,
+  NetworkError,
+  NotFoundError,
+  TimeoutError,
+} from "./error.js";
 
 /**
  * ESM-only client for Node 18+. Uses global fetch/FormData/Blob.
@@ -26,7 +34,41 @@ export class AuraXClient {
     this.keyId = options.keyId;
 
     if (!this.apiKey || !this.keyId) {
-      throw new Error("API key and key ID are required");
+      throw new AuthenticationError("API key and key ID are required");
+    }
+  }
+
+  /**
+   * Private helper to process fetch responses and handle API errors.
+   */
+  private async _handleResponse(res: Response): Promise<void> {
+    if (res.ok) {
+      return;
+    }
+
+    const status = res.status;
+    let errorBody;
+    try {
+      // NestJS often sends detailed JSON errors
+      errorBody = await res.json();
+    } catch {
+      // Fallback if the error body isn't JSON
+      errorBody = { message: await res.text() };
+    }
+
+    const message = Array.isArray(errorBody.message)
+      ? errorBody.message.join(", ")
+      : errorBody.message || "An unknown API error occurred.";
+
+    switch (status) {
+      case 400:
+        throw new BadRequestError(message, { status, error: errorBody });
+      case 401:
+        throw new AuthenticationError(message, { status, error: errorBody });
+      case 404:
+        throw new NotFoundError(message, { status, error: errorBody });
+      default:
+        throw new APIError(message, { status, error: errorBody });
     }
   }
 
@@ -77,12 +119,18 @@ export class AuraXClient {
       ...(runWithPrompt && { runWithPrompt }),
     };
 
-    const res = await fetch(`${this.baseUrl}/api/ai/vto`, {
-      method: "POST",
-      headers: this.jsonHeaders,
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await res.text());
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/api/ai/vto`, {
+        method: "POST",
+        headers: this.jsonHeaders,
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      throw new NetworkError(e);
+    }
+
+    await this._handleResponse(res);
     return res.json();
   }
 
@@ -112,14 +160,18 @@ export class AuraXClient {
       width,
       height,
     };
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/api/ai/image-generation`, {
+        method: "POST",
+        headers: this.jsonHeaders,
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      throw new NetworkError(e);
+    }
 
-    const res = await fetch(`${this.baseUrl}/api/ai/image-generation`, {
-      method: "POST",
-      headers: this.jsonHeaders,
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) throw new Error(await res.text());
+    await this._handleResponse(res);
     return res.json();
   }
 
@@ -139,12 +191,18 @@ export class AuraXClient {
     form.append("image", image);
     form.append("productType", productType);
 
-    const res = await fetch(`${this.baseUrl}/api/ai/product-description`, {
-      method: "POST",
-      headers: this.authHeaders, // FormData sets its own Content-Type
-      body: form,
-    });
-    if (!res.ok) throw new Error(await res.text());
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/api/ai/product-description`, {
+        method: "POST",
+        headers: this.authHeaders,
+        body: form,
+      });
+    } catch (e) {
+      throw new NetworkError(e);
+    }
+
+    await this._handleResponse(res);
     return res.text();
   }
 
@@ -156,14 +214,20 @@ export class AuraXClient {
    * @returns The status of the task.
    */
   async getTask(taskId: string): Promise<TaskStatusResponse> {
-    const res = await fetch(
-      `${this.baseUrl}/api/ai/task/${encodeURIComponent(taskId)}`,
-      {
-        method: "GET",
-        headers: this.authHeaders,
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
+    let res: Response;
+    try {
+      res = await fetch(
+        `${this.baseUrl}/api/ai/task/${encodeURIComponent(taskId)}`,
+        {
+          method: "GET",
+          headers: this.authHeaders,
+        },
+      );
+    } catch (e) {
+      throw new NetworkError(e);
+    }
+
+    await this._handleResponse(res);
     return res.json();
   }
 
@@ -225,11 +289,12 @@ export class AuraXClient {
 
     es.onerror = (err: any) => {
       if (callbacks.onError) {
-        callbacks.onError(err);
+        callbacks.onError(
+          new APIError("SSE connection error.", { error: err }),
+        );
       }
       es.close();
     };
-
     return es;
   }
 
@@ -241,14 +306,20 @@ export class AuraXClient {
    * @returns Blob
    */
   async getImage(imageId: string): Promise<Blob> {
-    const res = await fetch(
-      `${this.baseUrl}/images/${encodeURIComponent(imageId)}`,
-      {
-        method: "GET",
-        headers: this.authHeaders,
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
+    let res: Response;
+    try {
+      res = await fetch(
+        `${this.baseUrl}/images/${encodeURIComponent(imageId)}`,
+        {
+          method: "GET",
+          headers: this.authHeaders,
+        },
+      );
+    } catch (e) {
+      throw new NetworkError(e);
+    }
+
+    await this._handleResponse(res);
     return res.blob();
   }
 
@@ -278,13 +349,22 @@ export class AuraXClient {
   }): Promise<TaskStatusResponse> {
     const start = Date.now();
     while (true) {
+      if (Date.now() - start > timeoutMs) {
+        throw new TimeoutError(
+          `Polling for task ${taskId} timed out after ${timeoutMs}ms.`,
+        );
+      }
+
+      // getTask already has robust error handling, so we just await it.
+      // If it fails, the error will bubble up and reject this promise.
       const status = await this.getTask(taskId);
       console.log(`Task (${taskId}) Status:`, status.status);
+
       if (status.status === "COMPLETED" || status.status === "FAILED") {
         return status;
       }
+
       await new Promise((r) => setTimeout(r, intervalMs));
-      if (Date.now() - start > timeoutMs) throw new Error("pollTask: timeout");
     }
   }
 }

@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![npm version](https://img.shields.io/npm/v/aurax_sdk.svg) • [![CI/CD](https://github.com/Team-AuraX/aurax_sdk/actions/workflows/ci.yaml/badge.svg)](https://github.com/Team-AuraX/aurax_sdk/actions/workflows/ci.yaml) • [Website](https://aurax.co.in) • [Documentation](https://studio.aurax.co.in/developer/docs)
+![npm version](https://img.shields.io/npm/v/aurax.svg) • [![CI/CD](https://github.com/Team-AuraX/aurax_sdk/actions/workflows/ci.yaml/badge.svg)](https://github.com/Team-AuraX/aurax_sdk/actions/workflows/ci.yaml) • [Website](https://aurax.co.in) • [Documentation](https://studio.aurax.co.in/developer/docs)
 
 </div>
 
